@@ -30,11 +30,33 @@ def list_runs(limit: int = 50):
             """,
             (limit,),
         ).fetchall()
-        out = []
-        for row in rows:
-            d = dict(row)
-            d["result"] = json.loads(d.pop("result_json"))
-            out.append(d)
-        return out
+        return _decorate(rows)
     finally:
         conn.close()
+
+
+def all_runs():
+    """Full chronological (id ASC) view of calc_runs, used by snapshot export."""
+    conn = connect()
+    try:
+        rows = conn.execute(
+            """
+            SELECT r.*, w.name wall_name, rl.name roll_name
+            FROM calc_runs r
+            LEFT JOIN walls w ON w.id=r.wall_id
+            LEFT JOIN rolls rl ON rl.id=r.roll_id
+            ORDER BY r.id ASC
+            """,
+        ).fetchall()
+        return _decorate(rows)
+    finally:
+        conn.close()
+
+
+def _decorate(rows):
+    out = []
+    for row in rows:
+        d = dict(row)
+        d["result"] = json.loads(d.pop("result_json"))
+        out.append(d)
+    return out
