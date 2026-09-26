@@ -17,6 +17,15 @@ def insert_run(wall_id: int, roll_id: int, result: dict, note: str = "") -> int:
         conn.close()
 
 
+def _rows_to_dicts(rows) -> list:
+    out = []
+    for row in rows:
+        d = dict(row)
+        d["result"] = json.loads(d.pop("result_json"))
+        out.append(d)
+    return out
+
+
 def list_runs(limit: int = 50):
     conn = connect()
     try:
@@ -30,11 +39,23 @@ def list_runs(limit: int = 50):
             """,
             (limit,),
         ).fetchall()
-        out = []
-        for row in rows:
-            d = dict(row)
-            d["result"] = json.loads(d.pop("result_json"))
-            out.append(d)
-        return out
+        return _rows_to_dicts(rows)
+    finally:
+        conn.close()
+
+
+def list_all_runs():
+    conn = connect()
+    try:
+        rows = conn.execute(
+            """
+            SELECT r.*, w.name wall_name, rl.name roll_name
+            FROM calc_runs r
+            LEFT JOIN walls w ON w.id=r.wall_id
+            LEFT JOIN rolls rl ON rl.id=r.roll_id
+            ORDER BY r.id ASC
+            """
+        ).fetchall()
+        return _rows_to_dicts(rows)
     finally:
         conn.close()
